@@ -70,7 +70,8 @@ struct mlx5_alloc_ucontext_resp {
 	__u32				max_recv_wr;
 	__u32				max_srq_recv_wr;
 	__u16				num_ports;
-	__u16				reserved;
+	__u8				cqe_version;
+	__u8				reserved[5];
 };
 
 struct mlx5_alloc_pd_resp {
