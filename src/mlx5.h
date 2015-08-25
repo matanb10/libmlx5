@@ -242,8 +242,8 @@ enum mlx5_rsc_type {
 };
 
 struct mlx5_resource {
-	enum mlx5_rsc_type      type;
-	uint32_t                rsn;
+	enum mlx5_rsc_type  type;
+	uint32_t            rsn;
 };
 
 struct mlx5_device {
