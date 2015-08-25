@@ -961,8 +961,7 @@ struct ibv_qp *create_qp(struct ibv_context *context,
 	}
 
 	ret = ibv_cmd_create_qp_ex(context, &qp->verbs_qp, sizeof(qp->verbs_qp),
-				   attr, &cmd.ibv_cmd,
-				   offsetof(struct mlx5_create_qp, uidx),
+				   attr, &cmd.ibv_cmd, sizeof(cmd),
 				   &resp.ibv_resp, sizeof(resp));
 	if (ret) {
 		mlx5_dbg(fp, MLX5_DBG_QP, "ret %d\n", ret);
@@ -1352,7 +1351,7 @@ mlx5_create_xrc_srq(struct ibv_context *context,
 	}
 
 	err = ibv_cmd_create_srq_ex(context, &msrq->vsrq, sizeof(msrq->vsrq),
-				    attr, &cmd.ibv_cmd, offsetof(struct mlx5_create_srq_ex, uidx),
+				    attr, &cmd.ibv_cmd, sizeof(cmd),
 				    &resp.ibv_resp, sizeof(resp));
 	if (err)
 		goto err_free_uidx;
