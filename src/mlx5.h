@@ -307,6 +307,10 @@ struct mlx5_context {
 	struct mlx5_spinlock            hugetlb_lock;
 	struct list_head                hugetlb_list;
 	uint8_t				cqe_version;
+	struct {
+		uint64_t                offset;
+		uint64_t                mask;
+	} core_clock;
 };
 
 struct mlx5_bitmap {
@@ -576,6 +580,9 @@ void mlx5_free_db(struct mlx5_context *context, uint32_t *db);
 
 int mlx5_query_device(struct ibv_context *context,
 		       struct ibv_device_attr *attr);
+int _mlx5_query_device_ex(struct ibv_context *context,
+			  const struct ibv_query_device_ex_input *input,
+			  struct ibv_device_attr_ex *attr, size_t attr_size);
 int mlx5_query_device_ex(struct ibv_context *context,
 			 const struct ibv_query_device_ex_input *input,
 			 struct ibv_device_attr_ex *attr,

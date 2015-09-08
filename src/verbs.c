@@ -1403,10 +1403,10 @@ struct ibv_srq *mlx5_create_srq_ex(struct ibv_context *context,
 	return NULL;
 }
 
-int mlx5_query_device_ex(struct ibv_context *context,
-			 const struct ibv_query_device_ex_input *input,
-			 struct ibv_device_attr_ex *attr,
-			 size_t attr_size)
+int _mlx5_query_device_ex(struct ibv_context *context,
+			  const struct ibv_query_device_ex_input *input,
+			  struct ibv_device_attr_ex *attr,
+			  size_t attr_size)
 {
 	struct mlx5_query_device_ex_resp resp;
 	struct mlx5_query_device_ex cmd;
@@ -1421,10 +1421,10 @@ int mlx5_query_device_ex(struct ibv_context *context,
 	memset(&resp, 0, sizeof(resp));
 	err = ibv_cmd_query_device_ex(context, input, attr, attr_size,
 				      &raw_fw_ver, &cmd.ibv_cmd, sizeof(cmd.ibv_cmd),
-				      sizeof(cmd), &resp.ibv_resp, sizeof(resp),
-				      sizeof(resp.ibv_resp));
+				      sizeof(cmd), &resp.ibv_resp,
+				      sizeof(resp.ibv_resp), sizeof(resp));
 	if (err)
-		return err;
+		return err < 0 ? err : -err;
 
 	major     = (raw_fw_ver >> 32) & 0xffff;
 	minor     = (raw_fw_ver >> 16) & 0xffff;
@@ -1432,6 +1432,25 @@ int mlx5_query_device_ex(struct ibv_context *context,
 	a = &attr->orig_attr;
 	snprintf(a->fw_ver, sizeof(a->fw_ver), "%d.%d.%04d",
 		 major, minor, sub_minor);
+
+	if (resp.comp_mask & QUERY_DEVICE_RESP_MASK_TIMESTAMP &&
+	    resp.response_length >= (offsetof(typeof(resp), hca_core_clock_offset) +
+				     sizeof(resp.hca_core_clock_offset) -
+				     sizeof(resp.ibv_resp)))
+		to_mctx(context)->core_clock.offset =
+			resp.hca_core_clock_offset;
+
+	return resp.comp_mask;
+}
+
+int mlx5_query_device_ex(struct ibv_context *context,
+			 const struct ibv_query_device_ex_input *input,
+			 struct ibv_device_attr_ex *attr, size_t attr_size)
+{
+	int ret = _mlx5_query_device_ex(context, input, attr, attr_size);
+
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
