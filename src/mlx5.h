@@ -117,7 +117,8 @@ enum {
 
 enum {
 	MLX5_MMAP_GET_REGULAR_PAGES_CMD    = 0,
-	MLX5_MMAP_GET_CONTIGUOUS_PAGES_CMD = 1
+	MLX5_MMAP_GET_CONTIGUOUS_PAGES_CMD = 1,
+	MLX5_MMAP_GET_CORE_CLOCK_CMD    = 5
 };
 
 #define MLX5_CQ_PREFIX "MLX_CQ"
@@ -311,6 +312,7 @@ struct mlx5_context {
 		uint64_t                offset;
 		uint64_t                mask;
 	} core_clock;
+	void			       *hca_core_clock;
 };
 
 struct mlx5_bitmap {
@@ -592,6 +594,8 @@ int mlx5_query_device_ex(struct ibv_context *context,
 			 const struct ibv_query_device_ex_input *input,
 			 struct ibv_device_attr_ex *attr,
 			 size_t attr_size);
+int mlx5_query_values(struct ibv_context *context,
+		      struct ibv_values_ex *values);
 struct ibv_qp *mlx5_create_qp_ex(struct ibv_context *context,
 				 struct ibv_qp_init_attr_ex *attr);
 int mlx5_query_port(struct ibv_context *context, uint8_t port,

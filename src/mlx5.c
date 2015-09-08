@@ -524,6 +524,30 @@ static int single_threaded_app(void)
 	return 0;
 }
 
+static int mlx5_map_internal_clock(struct mlx5_device *mdev,
+				   struct ibv_context *ibv_ctx)
+{
+	struct mlx5_context *context = to_mctx(ibv_ctx);
+	void *hca_clock_page;
+	off_t offset = 0;
+
+	set_command(MLX5_MMAP_GET_CORE_CLOCK_CMD, &offset);
+	hca_clock_page = mmap(NULL, mdev->page_size,
+			      PROT_READ, MAP_SHARED, ibv_ctx->cmd_fd,
+			      mdev->page_size * offset);
+
+	if (hca_clock_page == MAP_FAILED) {
+		fprintf(stderr, PFX
+			"Warning: Timestamp available,\n"
+			"but failed to mmap() hca core clock page.\n");
+		return -1;
+	}
+
+	context->hca_core_clock = hca_clock_page +
+		context->core_clock.offset % mdev->page_size;
+	return 0;
+}
+
 static int mlx5_init_context(struct verbs_device *vdev,
 			     struct ibv_context *ctx, int cmd_fd)
 {
@@ -539,6 +563,8 @@ static int mlx5_init_context(struct verbs_device *vdev,
 	off_t				offset;
 	struct mlx5_device	       *mdev;
 	struct verbs_context	       *v_ctx;
+	struct ibv_device_attr_ex	dev_attrs;
+	struct ibv_query_device_ex_input dev_attrs_input = {.comp_mask = 0};
 
 	mdev = to_mdev(&vdev->device);
 	v_ctx = verbs_get_ctx(ctx);
@@ -647,6 +673,13 @@ static int mlx5_init_context(struct verbs_device *vdev,
 		context->bfs[j].uuarn = j;
 	}
 
+	context->hca_core_clock = NULL;
+	errno = _mlx5_query_device_ex(ctx, &dev_attrs_input, &dev_attrs,
+				      sizeof(dev_attrs));
+	if (errno >= 0 && errno & QUERY_DEVICE_RESP_MASK_TIMESTAMP)
+		mlx5_map_internal_clock(mdev, ctx);
+	errno = 0;
+
 	mlx5_spinlock_init(&context->lock32);
 
 	context->prefer_bf = get_always_bf();
@@ -664,6 +697,7 @@ static int mlx5_init_context(struct verbs_device *vdev,
 	verbs_set_ctx_op(v_ctx, create_srq_ex, mlx5_create_srq_ex);
 	verbs_set_ctx_op(v_ctx, get_srq_num, mlx5_get_srq_num);
 	verbs_set_ctx_op(v_ctx, query_device_ex, mlx5_query_device_ex);
+	verbs_set_ctx_op(v_ctx, query_values, mlx5_query_values);
 	verbs_set_ctx_op(v_ctx, create_cq_ex, mlx5_create_cq_ex);
 	if (context->cqe_version && context->cqe_version == 1)
 		verbs_set_ctx_op(v_ctx, poll_cq_ex, mlx5_poll_cq_v1_ex);
@@ -697,6 +731,9 @@ static void mlx5_cleanup_context(struct verbs_device *device,
 		if (context->uar[i])
 			munmap(context->uar[i], page_size);
 	}
+	if (context->hca_core_clock)
+		munmap(context->hca_core_clock - context->core_clock.offset,
+		       page_size);
 	close_debug_file(context);
 }
 
