@@ -65,6 +65,23 @@ AC_CHECK_FUNC(ibv_read_sysfs_file, [],
     AC_MSG_ERROR([ibv_read_sysfs_file() not found.  libmlx5 requires libibverbs >= 1.0.3.]))
 AC_CHECK_FUNCS(ibv_dontfork_range ibv_dofork_range ibv_register_driver)
 
+AC_MSG_CHECKING("always inline")
+CFLAGS_BAK="$CFLAGS"
+CFLAGS="$CFLAGS -Werror"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+	static inline int f(void)
+		__attribute__((always_inline));
+	static inline int f(void)
+	{
+		return 1;
+	}
+]],[[
+		int a = f();
+		a = a;
+]])], [AC_MSG_RESULT([yes]) AC_DEFINE([HAVE_ALWAYS_INLINE], [1], [Define if __attribute((always_inline)).])],
+[AC_MSG_RESULT([no])])
+CFLAGS="$CFLAGS_BAK"
+
 dnl Now check if for libibverbs 1.0 vs 1.1
 dummy=if$$
 cat <<IBV_VERSION > $dummy.c
